@@ -90,11 +90,16 @@ class DetectionTrainer(BaseTrainer):
                 0: 6.95,   # container
                 1: 1.14    # license_plate
             }
-            # Kiểm tra nếu số lớp thay đổi, tránh lỗi KeyError
-            weights = [class_weights.get(i, 1.0) for i in range(num_classes)]
-            return torch.tensor(weights, dtype=torch.float32)
+            # Đảm bảo tất cả lớp đều có trọng số, tránh lỗi KeyError
+            weights = torch.tensor([class_weights.get(i, 1.0) for i in range(num_classes)], dtype=torch.float32)
 
-        self.model.class_weights = labels_to_class_weights(self.data["nc"]).to(self.device) * self.data["nc"]
+            # Normalize để tránh ảnh hưởng đến gradient quá lớn
+            weights /= weights.sum()  
+
+            return weights
+
+        self.model.class_weights = labels_to_class_weights(self.data["nc"]).to(self.device)
+
 
     def get_model(self, cfg=None, weights=None, verbose=True):
         """Return a YOLO detection model."""
