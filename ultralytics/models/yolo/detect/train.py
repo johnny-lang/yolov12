@@ -5,6 +5,7 @@ import random
 from copy import copy
 
 import numpy as np
+import torch 
 import torch.nn as nn
 
 from ultralytics.data import build_dataloader, build_yolo_dataset
@@ -82,7 +83,18 @@ class DetectionTrainer(BaseTrainer):
         self.model.names = self.data["names"]  # attach class names to model
         self.model.args = self.args  # attach hyperparameters to model
         dataset = self.build_dataset(self.trainset, mode="train")
-        self.model.class_weights = labels_to_class_weights(dataset.labels, self.data["nc"]).to(self.device) * self.data["nc"]
+        # Định nghĩa ngoài class để có thể tái sử dụng
+        def labels_to_class_weights(num_classes):
+            """Gán class weights thủ công thay vì tính toán tự động."""
+            class_weights = {
+                0: 6.95,   # container
+                1: 1.14    # license_plate
+            }
+            # Kiểm tra nếu số lớp thay đổi, tránh lỗi KeyError
+            weights = [class_weights.get(i, 1.0) for i in range(num_classes)]
+            return torch.tensor(weights, dtype=torch.float32)
+
+        self.model.class_weights = labels_to_class_weights(self.data["nc"]).to(self.device) * self.data["nc"]
 
     def get_model(self, cfg=None, weights=None, verbose=True):
         """Return a YOLO detection model."""
