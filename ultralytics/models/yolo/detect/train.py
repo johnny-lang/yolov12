@@ -11,7 +11,7 @@ from ultralytics.data import build_dataloader, build_yolo_dataset
 from ultralytics.engine.trainer import BaseTrainer
 from ultralytics.models import yolo
 from ultralytics.nn.tasks import DetectionModel
-from ultralytics.utils import LOGGER, RANK
+from ultralytics.utils import LOGGER, RANK, labels_to_class_weights
 from ultralytics.utils.plotting import plot_images, plot_labels, plot_results
 from ultralytics.utils.torch_utils import de_parallel, torch_distributed_zero_first
 
@@ -81,7 +81,8 @@ class DetectionTrainer(BaseTrainer):
         self.model.nc = self.data["nc"]  # attach number of classes to model
         self.model.names = self.data["names"]  # attach class names to model
         self.model.args = self.args  # attach hyperparameters to model
-        # TODO: self.model.class_weights = labels_to_class_weights(dataset.labels, nc).to(device) * nc
+        dataset = self.build_dataset(self.trainset, mode="train")
+        self.model.class_weights = labels_to_class_weights(dataset.labels, self.data["nc"]).to(self.device) * self.data["nc"]
 
     def get_model(self, cfg=None, weights=None, verbose=True):
         """Return a YOLO detection model."""
